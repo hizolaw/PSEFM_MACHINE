@@ -36,20 +36,26 @@ module if_reg(
     output  reg  [`WORDDATABUS]   if_insn,
     output  reg                   if_en
     );
+    reg  [`WORDADDRBUS]   next_if_pc;
+
     always@(posedge clk or `RESET_EDGE rst)begin
         if(rst==`RESET_ENABLE)begin//复位
             if_pc<=`RESET_VECTOR;
+            next_if_pc<=`RESET_VECTOR;
             if_en<=`DISABLE;
         end else begin
             if(stall==`DISABLE)begin
                 if(flush==`ENABLE)begin
                     if_pc<=new_pc;//异常，中断时的取指
                     if_en<=`DISABLE;
+                    next_if_pc<=new_pc+4;
                 end else if(br_taken==`ENABLE)begin
                     if_pc<=br_addr;//跳转指令的取指
+                    next_if_pc<=br_addr+4;
                     if_en<=`ENABLE;
                 end else begin
-                    if_pc<=if_pc+4;//正常的取指地址
+                    if_pc<=next_if_pc;//正常的取指地址
+                    next_if_pc<=next_if_pc+4;
                     if_en<=`ENABLE;
                 end
             end

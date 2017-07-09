@@ -22,6 +22,7 @@
 `include"alu.vh"
 `include"instructions.vh"
 `include"cp2.vh"
+`include"ctrl.vh"
 module decoder(
     input   wire    [`WORDADDRBUS]      if_pc,
     input   wire    [`WORDDATABUS]      if_insn,
@@ -34,11 +35,29 @@ module decoder(
 	input   wire    [`REGADDRBUS]	    id_dst_addr,	 
 	input   wire       				    id_gpr_we_,	
 	input   wire    [`MEMOPBUS]		    id_mem_op,		 
+    input   wire    [`CTRLOPBUS]        id_ctrl_op,
+    input   wire                        id_cp2_as_0,
+    input   wire                        id_cp2_fs_0,
 	input   wire       				    ex_en,			 
 	input   wire    [`REGADDRBUS]	    ex_dst_addr,	 
 	input   wire       				    ex_gpr_we_,	
 	input   wire    [`WORDDATABUS]	    ex_fwd_data,	 
-	input   wire    [`WORDDATABUS]	    mem_fwd_data,	 
+    input   wire                        ex_cp2_fs_0,
+    input   wire                        ex_cp2_as_0,
+    input   wire    [`CTRLOPBUS]        ex_ctrl_op,
+    input   wire [`MEMOPBUS]	     ex_mem_op	,  
+
+	input   wire       				    mem_en,			 
+	input   wire       				    mem_gpr_we_,	
+	input   wire    [`REGADDRBUS]	    mem_dst_addr,	 
+	input   wire    [`WORDDATABUS]	    mem_fwd_data,	
+    input   wire                        mem_cp2_fs_0,
+    input   wire                        mem_cp2_as_0,
+    input   wire    [`CTRLOPBUS]        mem_ctrl_op,
+    input   wire    [`WORDDATABUS]      cp2_fdata_0,
+
+    input   wire    [`WORDDATABUS]      wb_fwd_data,
+
 	input   wire    [`CPUEXEMODEBUS]    exe_mode,		
 	input   wire    [`WORDDATABUS]	    creg_rd_data,	
 	output  wire    [`REGADDRBUS]	    creg_rd_addr,	 
@@ -69,15 +88,15 @@ module decoder(
 	wire [`ISAIMMBUS]	imm		= if_insn[`ISAIMMLOC];	  
 	wire [`ISASHAMTBUS] shamt   = if_insn[`ISASHAMTLOC];
     wire [`WORDDATABUS] imm_s = {{`ISAEXTW{imm[`ISAIMMMSB]}}, imm};
-	wire [`REGADDRBUS]  fmt   =  rd_addr;
+	wire [`REGADDRBUS]  fmt   =  rs_addr;
     wire [`WORDDATABUS] imm_u = {{`ISAEXTW{1'b0}}, imm};
 	
     wire [`WORDDATABUS] shamt_u = {`WORDDATAW{shamt}};
     
     assign gpr_rd_addr_0 = rs_addr; 
 	assign gpr_rd_addr_1 = rt_addr; 
-	assign creg_rd_addr	 = rd_addr; 
-	
+	assign creg_rd_addr	 = (if_insn==`INS_ERET)?`CTRL_EPC:rd_addr; 
+	reg         [`WORDDATABUS]  creg_data;
     reg			[`WORDDATABUS]	rs_data;						  
 	wire signed [`WORDDATABUS]	s_rs_data = $signed(rs_data);	  
 	reg			[`WORDDATABUS]	rt_data;						  
@@ -87,8 +106,22 @@ module decoder(
 
     wire [`WORDDATABUS] ret_addr  = if_pc + 3'd4;					
 	wire [`WORDDATABUS] br_target = if_pc + imm_s;
-	wire [`WORDDATABUS] jr_target = rs_data;	
-
+	wire [`WORDDATABUS] jr_target = {4'b0,if_insn[25:0],2'b0};	
+    //creg forwarding
+    always@(*)begin
+        if ((id_en == `ENABLE) && (id_ctrl_op==`CTRLOPWRCR) &&
+            (creg_rd_addr==id_dst_addr))begin
+            creg_data=ex_fwd_data;
+        end else if((ex_en == `ENABLE) && (ex_ctrl_op==`CTRLOPWRCR) &&
+            (creg_rd_addr==ex_dst_addr))begin
+            creg_data=mem_fwd_data;
+        end else if((mem_en == `ENABLE) && (mem_ctrl_op==`CTRLOPWRCR) &&
+            (creg_rd_addr==mem_dst_addr))begin
+            creg_data=wb_fwd_data;
+        end else begin
+            creg_data=creg_rd_data;
+        end
+    end
 
     //forwarding
     always@(*)begin
@@ -99,7 +132,10 @@ module decoder(
 		end else if ((ex_en == `ENABLE) && (ex_gpr_we_ == `ENABLE_) && 
 					 (ex_dst_addr == rs_addr)) begin
 			rs_data = mem_fwd_data;	//mem的数据直通
-		end else begin
+        end else if((mem_en == `ENABLE) && (mem_gpr_we_ == `ENABLE_) && 
+					 (mem_dst_addr == rs_addr))begin //wb的数据直通
+            rs_data = (mem_cp2_fs_0 | mem_cp2_as_0) ? cp2_fdata_0: wb_fwd_data;
+        end else begin
 			rs_data = gpr_rd_data_0;//gpr直接读取 
 		end
         /*rt*/
@@ -109,15 +145,20 @@ module decoder(
 		end else if ((ex_en == `ENABLE) && (ex_gpr_we_ == `ENABLE_) && 
 					 (ex_dst_addr == rt_addr)) begin
 			rt_data = mem_fwd_data;	 
-		end else begin
+		end else if((mem_en == `ENABLE) && (mem_gpr_we_ == `ENABLE_) && 
+					 (mem_dst_addr == rt_addr))begin //wb的数据直通
+            rt_data = (mem_cp2_fs_0 | mem_cp2_as_0) ? cp2_fdata_0: wb_fwd_data;
+        end else begin
 			rt_data = gpr_rd_data_1; 
 		end
     end
 
     //load harzard
 	always @(*) begin
-		if ((id_en == `ENABLE) && (id_mem_op == `MEMOPLW) &&
-			((id_dst_addr == rs_addr) || (id_dst_addr == rt_addr))) begin
+		if ((id_en == `ENABLE) && (|id_mem_op[4:3] ) &&((id_dst_addr == rs_addr) 
+            || (id_dst_addr == rt_addr)) ||(ex_en ==`ENABLE &&(|ex_mem_op[4:3] )&&((ex_dst_addr == rs_addr) || (ex_dst_addr == rt_addr)))
+            ||(id_en==`ENABLE&&id_gpr_we_==`ENABLE_&&(id_dst_addr==rs_addr||id_dst_addr==rt_addr)&&(id_cp2_fs_0|id_cp2_as_0))
+            ||(ex_en==`ENABLE&&ex_gpr_we_==`ENABLE_&&(ex_dst_addr==rs_addr||ex_dst_addr==rt_addr)&&(ex_cp2_fs_0|ex_cp2_as_0))) begin
 			ld_hazard = `ENABLE; 
 		end else begin
 			ld_hazard = `DISABLE; 
@@ -186,12 +227,19 @@ module decoder(
                 `INS_FUNC_CP0   :begin
                     case(rs_addr)
                         5'b00000:begin  //rs为0时，表示是mfc0指令
-                            alu_in_0 = creg_rd_data;
+                            alu_in_0 = creg_data;
+                            alu_in_1 = `WORDDATAW'b0;
+		                    alu_op	 = `ALU_OP_ADDU;
+                            dst_addr = rt_addr;
+                            ctrl_op = `CTRLOPRCR;
                             gpr_we_ = `ENABLE_;
                         end
                         5'b00100:begin  //rs为100时，表示是mtc0指令
                             alu_in_0 = rt_data;
+                            alu_in_1 = `WORDDATAW'b0;
+		                    alu_op	 = `ALU_OP_ADDU;
                             ctrl_op = `CTRLOPWRCR;
+                            dst_addr = creg_rd_addr;
                         end
                         5'b10000:begin
                             if(if_insn[5:0]==6'b011000&&exe_mode == `CPUKERNELMODE)begin
@@ -255,46 +303,58 @@ module decoder(
                     endcase
 
                 end
-                //`INS_FUNC_ERET  :begin  
-                //    if(exe_mode == `CPUKERNELMODE)begin
-                //        ctrl_op = `CTRLOPEXRT;
-                //    end else begin
-                //        exp_code = `ISAEXP_PRVVIO;
-                //    end
-                //end
+                `INS_FUNC_ERET  :begin  
+                    if(exe_mode == `CPUKERNELMODE)begin
+                        ctrl_op = `CTRLOPEXRT;
+                        br_addr = creg_data;
+                        br_taken = `ENABLE;
+                        br_flag = `ENABLE;
+                    end else begin
+                        exp_code = `ISAEXP_PRVVIO;
+                    end
+                end
                 `INS_FUNC_ADDI  :begin  
                     alu_op = `ALU_OP_ADD;
                     dst_addr = rt_addr;
                     alu_in_0 = rs_data;
                     alu_in_1 = imm_s;
+                    gpr_we_ = `ENABLE_;
                 end
                 `INS_FUNC_ADDIU :begin 
                     alu_op = `ALU_OP_ADDU;
                     dst_addr = rt_addr;
                     alu_in_0 = rs_data;
                     alu_in_1 = imm_s;
+                    gpr_we_ = `ENABLE_;
                 end
                 `INS_FUNC_ANDI  :begin  
                     alu_op = `ALU_OP_AND;
                     dst_addr = rt_addr;
                     alu_in_0 = rs_data;
                     alu_in_1 = imm_u;
+                    gpr_we_ = `ENABLE_;
                 end
                 `INS_FUNC_ORI   :begin   
                     alu_op = `ALU_OP_OR;
                     dst_addr = rt_addr;
                     alu_in_0 = rs_data;
                     alu_in_1 = imm_u;
+                    gpr_we_ = `ENABLE_;
                 end
                 `INS_FUNC_XORI  :begin  
                     alu_op   = `ALU_OP_XOR;
                     dst_addr = rt_addr;
                     alu_in_0 = rs_data;
                     alu_in_1 = imm_u;
+                    gpr_we_ = `ENABLE_;
                 end
-                //`INS_FUNC_LUI   :begin
+                `INS_FUNC_LUI   :begin
+                    alu_op  =`ALU_OP_ADD;
+                    alu_in_1= imm_u;
+                    dst_addr = rt_addr;
+                    gpr_we_ = `ENABLE_;
 
-                //end
+                end
                 `INS_FUNC_LB    :begin
                     alu_op = `ALU_OP_ADDU;
                     alu_in_1 = imm_s;

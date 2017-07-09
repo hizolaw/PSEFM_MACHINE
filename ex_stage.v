@@ -64,7 +64,6 @@ module ex_stage (
     output wire                ex_cp2_ts_0,
     output wire                ex_cp2_as_0,
     output wire [`WORDDATABUS] ex_cp2_wr_data
-
 );
 
 	wire [`WORDDATABUS]		   alu_out;		   

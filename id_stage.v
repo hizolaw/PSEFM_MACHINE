@@ -36,9 +36,25 @@ module id_stage (
 	input  wire [`WORDDATABUS]	 ex_fwd_data,	 
 	input  wire [`REGADDRBUS]	 ex_dst_addr,	 
 	input  wire					 ex_gpr_we_,	 
+    input   wire [`MEMOPBUS]	 ex_mem_op	,  
+    input   wire                        ex_cp2_fs_0,
+    input   wire                        ex_cp2_as_0,
+	input wire [`CTRLOPBUS]	 ex_ctrl_op,	 
 	// 访存阶段的直通判断
     input  wire [`WORDDATABUS]	 mem_fwd_data,	 
-	
+	input wire [`CTRLOPBUS]	 mem_ctrl_op,	 
+    
+    
+
+    input   wire       				    mem_en,			 
+	input   wire       				    mem_gpr_we_,	
+	input   wire    [`REGADDRBUS]	    mem_dst_addr,	 
+    input   wire                        mem_cp2_fs_0,
+    input   wire                        mem_cp2_as_0,
+    input   wire    [`WORDDATABUS]      cp2_fdata_0,
+
+    input   wire    [`WORDDATABUS]      wb_fwd_data,
+
     // cp0寄存器的读写控制
     input  wire [`CPUEXEMODEBUS] exe_mode,		 
 	input  wire [`WORDDATABUS]	 creg_rd_data,	 
@@ -72,7 +88,8 @@ module id_stage (
     output wire                  id_cp2_fs_0,
     output wire                  id_cp2_ts_0,
     output wire                  id_cp2_as_0,
-    output wire [`WORDDATABUS]   id_cp2_wr_data
+    output wire [`WORDDATABUS]   id_cp2_wr_data,
+    output wire [`WORDDATABUS]   id_insn
 );
 
 	wire  [`ALUOPBUS]			 alu_op;		 
@@ -106,11 +123,26 @@ module id_stage (
 		.id_dst_addr	(id_dst_addr),	  
 		.id_gpr_we_		(id_gpr_we_),	  
 		.id_mem_op		(id_mem_op),	  
+        .id_ctrl_op     (id_ctrl_op),
 		.ex_en			(ex_en),		  
 		.ex_fwd_data	(ex_fwd_data),	  
 		.ex_dst_addr	(ex_dst_addr),	  
 		.ex_gpr_we_		(ex_gpr_we_),	  
-		.mem_fwd_data	(mem_fwd_data),	  
+        .ex_mem_op      (ex_mem_op),
+        .ex_cp2_fs_0    (ex_cp2_fs_0),
+        .ex_cp2_as_0    (ex_cp2_as_0),
+
+
+        .mem_en			(mem_en			),		 
+        .mem_gpr_we_	(mem_gpr_we_	), 
+        .mem_dst_addr	(mem_dst_addr	),
+        .mem_cp2_fs_0	(mem_cp2_fs_0	),
+        .mem_cp2_as_0	(mem_cp2_as_0	),
+        .cp2_fdata_0	(cp2_fdata_0	),
+                                     
+        .wb_fwd_data	(wb_fwd_data	),
+		
+        .mem_fwd_data	(mem_fwd_data),	  
 		.exe_mode		(exe_mode),		  
 		.creg_rd_data	(creg_rd_data),	  
 		.creg_rd_addr	(creg_rd_addr),	  
@@ -131,6 +163,8 @@ module id_stage (
         .cp2_fs_s       (cp2_fs_s),
         .cp2_ts_s       (cp2_ts_s),
         .cp2_as_s       (cp2_as_s),
+        .id_cp2_fs_0       (id_cp2_fs_0),
+        .id_cp2_as_0       (id_cp2_as_0),
         .cp2_wr_data    (cp2_wr_data)
 	);
 
@@ -138,6 +172,8 @@ module id_stage (
 		.clk			(clk),			  
 		.reset			(reset),		  
 		
+		.if_insn		(if_insn),		  
+        
         .alu_op			(alu_op),		  
 		.alu_in_0		(alu_in_0),		  
 		.alu_in_1		(alu_in_1),		  
@@ -167,6 +203,7 @@ module id_stage (
 		.id_dst_addr	(id_dst_addr),	  
 		.id_gpr_we_		(id_gpr_we_),	  
 		.id_exp_code	(id_exp_code),
+        .id_insn(id_insn),
 
         .cp2_irenable_s (cp2_irenable_s),
         .cp_irenable_0  (cp_irenable_0),

@@ -26,6 +26,7 @@ module mem_ctrl(
 	input  wire [`MEMOPBUS]	   ex_mem_op,	   
 	input  wire [`WORDDATABUS] ex_mem_wr_data, 
 	input  wire [`WORDDATABUS] ex_out,		   
+    input  wire [`WORDDATABUS] rd_data,
 	
     //input  wire [`WORDDATABUS] rd_data,		   
 	output wire [`WORDADDRBUS] addr,		   
@@ -69,6 +70,28 @@ module mem_ctrl(
                     wr_data = ex_mem_wr_data<<addr[1:0];
                     wea = 4'b0001<<addr[1:0];
           //          as  = `ENABLE;
+                end
+                `MEMOPLW:begin
+                    out=rd_data;
+                end
+                `MEMOPLHU     :begin
+                    if(addr[1])
+                        out=(rd_data&32'hffff0000)>>16;
+                    else
+                        out=(rd_data&32'h0000ffff);
+                end
+                `MEMOPLH    :begin
+                    if(addr[1])
+                        out={rd_data[31],16'h0,rd_data[30:16]};
+                    else
+                        out={rd_data[15],16'h0,rd_data[14:0]};
+                end
+                `MEMOPLB     :begin
+                    out=((~(32'hff<<addr[1:0]))&rd_data)>>(addr[1:0]);
+                    out={out[7],24'h0,out[6:0]};
+                end
+                `MEMOPLBU    :begin
+                    out=((~(32'hff<<addr[1:0]))&rd_data)>>(addr[1:0]);
                 end
                 default      :begin// 无内存访问
                     out = ex_out;

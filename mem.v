@@ -30,7 +30,7 @@ module mem(
     input   wire    [`WORDADDRBUS]      mem_data_addr,
     input   wire    [`WORDDATABUS]      mem_data_input,
     input   wire    [`WEABUS]           mem_data_wea,
-    output  wire     [`WORDDATABUS]     mem_data_output
+    output  wire    [`WORDDATABUS]     mem_data_output
     );
     blk_mem_gen_0 ram(.clka(clka),
                       .ena(`ENABLE),

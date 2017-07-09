@@ -88,6 +88,7 @@ module mem_stage (
 		.ex_mem_op		(ex_mem_op),		   
 		.ex_mem_wr_data (ex_mem_wr_data),	   
 		.ex_out			(ex_out),			   
+        .rd_data      (mem_data_output),
 		
         //.rd_data		(rd_data),			   
 		.addr			(addr),				   
@@ -133,7 +134,6 @@ module mem_stage (
         .cp2_tdata_0    (cp2_tdata_0),
         .cp2_tds_0      (cp2_tds_0),
         
-        .rd_data      (mem_data_output),
         .addr         (addr),
         .mem_pc		  (mem_pc),				   
 		.mem_en		  (mem_en),				   

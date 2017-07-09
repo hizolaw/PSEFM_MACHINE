@@ -31,7 +31,9 @@ module cp2_decode_stage(
 
     output reg                      time_info_sel,
     input wire [`WORDDATABUS]       time_dout,
-    
+ 
+    input wire [`WORDDATABUS]       write_back_fwd,
+
     output reg [2:0]                task_info_sel,
     output reg [`TasksNumAddrBus]   task_sel_r,
     input wire [`WORDDATABUS]       task_info,
@@ -103,6 +105,7 @@ module cp2_decode_stage(
     reg  chdeadline_ena_buf1;
                             
 
+    reg [`WORDDATABUS]       fetch_instruction_bac;
 
 
     assign imm=fetch_instruction[15:3];
@@ -328,10 +331,14 @@ module cp2_decode_stage(
             decode_task_new_status<=0;
             decode_task_trigger_op_ena<=`DISABLE;
             decode_task_trigger_op<=`DISABLE;
+            fetch_instruction_bac<=`WORDDATAW'b0;
         end else begin
+            fetch_instruction_bac<=fetch_instruction;
             if(decode_en)begin
                 if(type_as&&cp2_as_0)begin
                     decode_as<=`ENABLE;
+                    decode_ts<=`DISABLE;
+                    decode_fs<=`DISABLE;
                     decode_fdata<=data_output;
                     decode_task_sel<=task_sel_buf;
                     decode_task_aord_op<=task_aord_op_buf;
@@ -341,9 +348,17 @@ module cp2_decode_stage(
                     decode_task_trigger_op<=task_trigger_op_buf;
                 end else if(type_fs&&cp2_fs_0)begin
                     decode_fs<=`ENABLE;
-                    decode_fdata<=data_output;
+                    decode_ts<=`DISABLE;
+                    decode_as<=`DISABLE;
+                    if(fetch_instruction_bac[25:21]==`MTC2_FMT&&fetch_instruction[15:0]==fetch_instruction_bac[15:0] &&decode_ts==`ENABLE)begin
+                        decode_fdata<=write_back_fwd;//write back 的数据直通
+                    end else begin
+                        decode_fdata<=data_output;
+                    end
                 end else if(type_ts&&cp2_ts_0)begin
                     decode_ts<=`ENABLE;
+                    decode_fs<=`DISABLE;
+                    decode_as<=`DISABLE;
                     decode_g_time_write_en<=g_time_write_en_buf1;
                     decode_g_time_write_sel<=g_time_write_sel_buf1;
                     decode_ttr_w_sel<=ttr_w_sel_buf1;

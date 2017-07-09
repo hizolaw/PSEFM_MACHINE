@@ -27,6 +27,8 @@ module id_reg(
 	input  wire				    clk,			   
 	input  wire				    reset,		   
 	
+    input  wire  [`WORDDATABUS] if_insn,
+
     input  wire  [`ALUOPBUS]    alu_op,		   
 	input  wire  [`WORDDATABUS] alu_in_0,	   
 	input  wire  [`WORDDATABUS] alu_in_1,	   
@@ -66,8 +68,10 @@ module id_reg(
     output reg                 id_cp2_fs_0,
     output reg                 id_cp2_ts_0,
     output reg                 id_cp2_as_0,
-    output reg  [`WORDDATABUS] id_cp2_wr_data
+    output reg  [`WORDDATABUS] id_cp2_wr_data,
+    output reg [`WORDDATABUS]  id_insn
     );
+    reg [`WORDDATABUS]          if_insn_buf;
 	always @(posedge clk or `RESET_EDGE reset) begin
 		if (reset == `RESET_ENABLE) begin 
 			id_pc		   <=  `WORDADDRW'h0;
@@ -86,6 +90,7 @@ module id_reg(
             id_cp2_ts_0    <=  `DISABLE;
             id_cp2_as_0    <=  `DISABLE;
             id_cp2_wr_data <=  `WORDDATAW'b0;
+            if_insn_buf <=  `WORDDATAW'b0;
 		end else begin
 			if (stall == `DISABLE) begin 
 				if (flush == `ENABLE) begin 
@@ -104,6 +109,7 @@ module id_reg(
                    id_cp2_fs_0    <=  `DISABLE;
                    id_cp2_ts_0    <=  `DISABLE;
                    id_cp2_as_0    <=  `DISABLE;
+                   if_insn_buf <=  `WORDDATAW'b0;
 				end else begin		  	
 				   id_pc		  <=  if_pc;
 				   id_en		  <=  if_en;
@@ -122,6 +128,7 @@ module id_reg(
                    id_cp2_fs_0       <=  cp2_fs_s;
                    id_cp2_ts_0       <=  cp2_ts_s;
                    id_cp2_as_0       <=  cp2_as_s;
+                   if_insn_buf <=  if_insn;
 				end
 			end
 		end
@@ -130,8 +137,10 @@ module id_reg(
     always@(negedge clk)begin//cp2的指令传送
         if(cp2_irenable_s==`ENABLE)begin
             cp_irenable_0<=`ENABLE;
+            id_insn      <=  if_insn_buf;
         end else begin
             cp_irenable_0<=`DISABLE;
+            id_insn      <= `WORDADDRW'b0;
         end
     end
 

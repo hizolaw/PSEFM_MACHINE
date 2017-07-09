@@ -62,7 +62,7 @@ module ctrl (
 	output wire					  id_stall,		
 	output wire					  ex_stall,		
 	output wire					  mem_stall,	
-
+    
     output wire					  if_flush,		
 	output wire					  id_flush,		
 	output wire					  ex_flush,		
@@ -112,6 +112,8 @@ module ctrl (
 	assign id_flush	 = flush | ld_hazard;
 	assign ex_flush	 = flush;
 	assign mem_flush = flush;
+    
+    reg    write_back_en;
 
 	always @(*) begin
         new_pc = `WORDADDRW'h0;
@@ -121,14 +123,14 @@ module ctrl (
 				//new_pc = exp_vector;
 				new_pc = `INT_VECTOR;
 				flush  = `ENABLE;
-			end else if (mem_ctrl_op == `CTRLOPEXRT) begin 
-				new_pc = epc;
-				flush  = `ENABLE;
+			//end //else if (mem_ctrl_op == `CTRLOPEXRT) begin 
+				//new_pc = epc;
+				//flush  = `ENABLE;
 			end else if (mem_ctrl_op == `CTRLOPWRCR) begin 
 				new_pc = mem_pc;
 				flush  = `ENABLE;
 			end
-		end
+        end
     end
 
     //中断检测
@@ -141,7 +143,7 @@ module ctrl (
 		    	int_detect = `ENABLE;
                 if(cp2_exc_0&cp2_excs_0)begin
                     int_type=`ISAEXP_CP2;
-                end begin
+                end else begin
                     int_type=`ISAEXP_EXTINT;
                 end
             end else begin
@@ -211,65 +213,64 @@ module ctrl (
 //	end
     
 	always @(posedge clk or `RESET_EDGE reset) begin
-		if (reset == `RESET_ENABLE) begin
+        if (reset == `RESET_ENABLE) begin
+            write_back_en<=`DISABLE;
             exe_mode	 <=  `CPUKERNELMODE;
-			cp0[`CTRL_STATUS ][0:0]	 <=  `DISABLE;
 			pre_exe_mode <=  `CPUKERNELMODE;
 			pre_int_en	 <=  `DISABLE;
-			//exp_code	 <=  `ISAEXP_NOEXP;
-			cp0[`CTRL_STATUS][`IRQ_BUS_LOC]		 <=  {`CPU_IRQ_CH{`ENABLE}};
-			dly_flag	 <=  `DISABLE;
-			//exp_vector	 <=  `WORDADDRW'h0;
 			pre_pc		 <=  `WORDADDRW'h0;
+			dly_flag	 <=  `DISABLE;
 			br_flag		 <=  `DISABLE;
-            
-            cp0[`CTRL_COUNT  ]       <=  `WORDADDRW'h0;
-            cp0[`CTRL_COMPARE]      <=  `WORDADDRW'h0;
-            //status       <=  `WORD_ADDR_W'h0;
-            cp0[`CTRL_COUSE  ]       <=  `ISAEXP_NOEXP;
-            cp0[`CTRL_EPC    ]          <=  `WORDADDRW'h0;
-       
-            gpr_wr_data <=  `WORDDATAW'b0;
             gpr_wea     <=  `DISABLE_;
-            gpr_wr_addr <=  0;
-		
+            gpr_wr_data <=  `WORDDATAW'b0;
+            cp0[`CTRL_STATUS ][0:0]	 <=  `DISABLE;
+			cp0[`CTRL_STATUS][`IRQ_BUS_LOC]		 <=  {`CPU_IRQ_CH{`ENABLE}};
+            cp0[`CTRL_COUNT  ]       <=  `WORDADDRW'h0;
+            cp0[`CTRL_COMPARE]       <=  `WORDADDRW'h0;
+            cp0[`CTRL_COUSE  ]       <=  `ISAEXP_NOEXP;
+            cp0[`CTRL_EPC    ]       <=  `WORDADDRW'h0;
+
         end else begin
-			if ((mem_en == `ENABLE) && (stall == `DISABLE)) begin
+		    if ((mem_en == `ENABLE) && (stall == `DISABLE)) begin
 				pre_pc		 <=  mem_pc;
 				br_flag		 <=  mem_br_flag;
                 if (mem_exp_code != `ISAEXP_NOEXP) begin// 发生异常
 					exe_mode	 <=  `CPUINTERRUPTMODE;
-			        cp0[`CTRL_STATUS ][0:0]	 <=  `DISABLE;
 					pre_exe_mode <=  exe_mode;
 					pre_int_en	 <=  int_en;
-					//exp_code	 <=  mem_exp_code;
-                    cp0[`CTRL_COUSE  ]       <=  mem_exp_code;
 					dly_flag	 <=  br_flag;
-                    cp0[`CTRL_EPC    ]  <=  pre_pc;
                     gpr_wea      <=  `DISABLE_;
+    	            cp0[`CTRL_STATUS ][0:0]	 <=  `DISABLE;
+                    cp0[`CTRL_COUSE  ]       <=  mem_exp_code;
+                    cp0[`CTRL_EPC    ]  <=  pre_pc;
+            
 				end else if (mem_ctrl_op == `CTRLOPEXRT) begin //  异常返回
 					exe_mode	 <=  pre_exe_mode;
-					cp0[`CTRL_STATUS ][0:0]		 <=  pre_int_en;
                     gpr_wea      <=  `DISABLE_;
-				end else if (mem_ctrl_op == `CTRLOPWRCR) begin  //  控制寄存器的写入
-				    // cp0寄存器写
+					cp0[`CTRL_STATUS ][0:0]		 <=  pre_int_en;
+				end else if (mem_ctrl_op == `CTRLOPWRCR) begin //  写 ctrl regs
                     case (mem_dst_addr)
                         `CTRL_COUNT    , 
                         `CTRL_COMPARE  , 
                         `CTRL_STATUS   , 
                         `CTRL_COUSE    , 
                         `CTRL_EPC      :begin 
-                            cp0[creg_rd_addr]<=mem_out;
-                            gpr_wea      <=  `DISABLE_;
+                            cp0[mem_dst_addr]<=mem_out;
+                        end
+                        default:begin
+                            cp0[mem_dst_addr]<=cp0[mem_dst_addr];
                         end
                     endcase	
                 end else begin
-                    gpr_wr_data <= (mem_cp2_fs_0 | mem_cp2_as_0) ? cp2_fdata_0: mem_out;// 没写cp2_fds_0的检查，以后再说
                     gpr_wea     <=  mem_gpr_we_;
                     gpr_wr_addr <=  mem_dst_addr;
-
-                end
+//                    if(mem_ctrl_op==`CTRLOPRCR)begin
+//                        gpr_wr_data <=cp0[mem_out[4:0]] ;// 没写cp2_fds_0的检查，以后再说
+//                    end else begin
+                        gpr_wr_data <= (mem_cp2_fs_0 | mem_cp2_as_0) ? cp2_fdata_0: mem_out;// 没写cp2_fds_0的检查，以后再说
+//                    end
+               end
 			end
-		end
-	end
+        end
+    end
 endmodule

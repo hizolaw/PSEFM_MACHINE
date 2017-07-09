@@ -59,6 +59,7 @@ module cpu(
     wire                if_busy;
     wire                mem_busy;
 
+    wire    [`WORDDATABUS]      wb_fwd_data;
 
     wire [`WORDDATABUS] gpr_rd_data_0;
     wire [`WORDDATABUS] gpr_rd_data_1;
@@ -69,8 +70,10 @@ module cpu(
     wire                    gpr_wea;
     wire  [`REGADDRBUS]     gpr_wr_addr;
 
+    wire [`WORDDATABUS] id_insn;
 
 
+    wire [`WORDDATABUS] ex_insn;
     wire                ex_en;
     wire [`WORDDATABUS] ex_fwd_data;
     wire [`REGADDRBUS]  ex_dst_addr;
@@ -135,10 +138,13 @@ module cpu(
     assign  cp2_ts_0=   ex_cp2_ts_0;
     assign  cp2_as_0=   ex_cp2_as_0;
     assign  clk_    =   ~clk;
-    assign  cp_ir_0 = insn;
+    assign  cp_ir_0 =  id_insn;
+
+    assign  wb_fwd_data = mem_out;
+
     mem mem(
         .clka(clk_),
-        .clkb(clk),
+        .clkb(clk_),
         .rst(rst),
         .insn_addr(if_pc),
         .insn(insn),
@@ -177,7 +183,20 @@ module cpu(
         .ex_fwd_data(ex_fwd_data),	 
         .ex_dst_addr(ex_dst_addr),	 
         .ex_gpr_we_(ex_gpr_we_),	 
-                        
+        .ex_cp2_fs_0(ex_cp2_fs_0),
+        .ex_cp2_as_0(ex_cp2_as_0),
+        .ex_ctrl_op(ex_ctrl_op),
+     
+        .mem_en			(mem_en			),		 
+        .mem_gpr_we_	(mem_gpr_we_	), 
+        .mem_dst_addr	(mem_dst_addr	),
+        .mem_cp2_fs_0	(mem_cp2_fs_0	),
+        .mem_cp2_as_0	(mem_cp2_as_0	),
+        .mem_ctrl_op    (mem_ctrl_op),
+        .cp2_fdata_0	(cp2_fdata_0	),
+                                     
+        .wb_fwd_data	(wb_fwd_data	),
+		                   
         .mem_fwd_data(mem_fwd_data),	 
                         
         .exe_mode(exe_mode),		 
@@ -191,7 +210,6 @@ module cpu(
         .ld_hazard(ld_hazard),		 
                         
         .if_pc(if_pc),			 
-        .if_insn(if_insn),		 
         .if_en(if_en),			 
                         
         .id_pc(id_pc),			 
@@ -206,11 +224,13 @@ module cpu(
         .id_dst_addr(id_dst_addr),	 
         .id_gpr_we_(id_gpr_we_),	 
         .id_exp_code(id_exp_code),
+        .id_insn(id_insn),
         .cp_irenable_0(cp_irenable_0),
         .id_cp2_fs_0(id_cp2_fs_0),
         .id_cp2_ts_0(id_cp2_ts_0),
         .id_cp2_as_0(id_cp2_as_0),
-        .id_cp2_wr_data(id_cp2_wr_data)
+        .id_cp2_wr_data(id_cp2_wr_data),
+        .if_insn(if_insn)		 
     );
     
     ex_stage ex_stage(
@@ -240,7 +260,7 @@ module cpu(
         .id_cp2_ts_0(id_cp2_ts_0),
         .id_cp2_as_0(id_cp2_as_0),
         .id_cp2_wr_data(id_cp2_wr_data),
-                       
+
         .ex_pc(ex_pc),		  
         .ex_en(ex_en),		  
         .ex_br_flag(ex_br_flag),	  

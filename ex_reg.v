@@ -63,8 +63,10 @@ module ex_reg (
     output reg                 ex_cp2_as_0,
     output reg  [`WORDDATABUS] ex_cp2_wr_data
 
-
 );
+    reg    id_cp2_fs_0_buf;   
+    reg    id_cp2_ts_0_buf;
+    reg    id_cp2_as_0_buf;
 
 	always @(posedge clk or `RESET_EDGE reset) begin
 		if (reset == `RESET_ENABLE) begin 
@@ -79,6 +81,10 @@ module ex_reg (
 			ex_exp_code	   <=  `ISAEXP_NOEXP;
 			ex_out		   <=  `WORDDATAW'h0;
             ex_cp2_wr_data <=  `WORDDATAW'h0;
+            id_cp2_fs_0_buf<=`DISABLE;   
+            id_cp2_ts_0_buf<=`DISABLE;
+            id_cp2_as_0_buf<=`DISABLE;
+
 		end else begin
 			if (stall == `DISABLE) begin 
 				if (flush == `ENABLE) begin				  
@@ -93,6 +99,10 @@ module ex_reg (
 					ex_exp_code	   <=  `ISAEXP_NOEXP;
 					ex_out		   <=  `WORDDATAW'h0;
                     ex_cp2_wr_data <=  `WORDDATAW'h0;
+                    id_cp2_fs_0_buf<=`DISABLE;   
+                    id_cp2_ts_0_buf<=`DISABLE;
+                    id_cp2_as_0_buf<=`DISABLE;
+
 				end else if (int_detect == `ENABLE) begin //interrupt detect
 					ex_pc		   <=  id_pc;
 					ex_en		   <=  id_en;
@@ -105,6 +115,9 @@ module ex_reg (
 					ex_exp_code	   <=  int_type;
 					ex_out		   <=  `WORDDATAW'h0;
                     ex_cp2_wr_data <=  `WORDDATAW'h0;
+                    id_cp2_fs_0_buf<=`DISABLE;   
+                    id_cp2_ts_0_buf<=`DISABLE;
+                    id_cp2_as_0_buf<=`DISABLE;
 				end else if (alu_of == `ENABLE) begin	 
 					ex_pc		   <=  id_pc;
 					ex_en		   <=  id_en;
@@ -117,6 +130,10 @@ module ex_reg (
 					ex_exp_code	   <=  `ISAEXP_OVERFLOW;
 					ex_out		   <=  `WORDDATAW'h0;
                     ex_cp2_wr_data <=  `WORDDATAW'h0;
+                    id_cp2_fs_0_buf<=`DISABLE;   
+                    id_cp2_ts_0_buf<=`DISABLE;
+                    id_cp2_as_0_buf<=`DISABLE;
+
 				end else begin				
 					ex_pc		   <=  id_pc;
 					ex_en		   <=  id_en;
@@ -129,12 +146,15 @@ module ex_reg (
 					ex_exp_code	   <=  id_exp_code;
 					ex_out		   <=  alu_out;
                     ex_cp2_wr_data <=  id_cp2_wr_data;
+                    id_cp2_fs_0_buf<=id_cp2_fs_0;   
+                    id_cp2_ts_0_buf<=id_cp2_ts_0;
+                    id_cp2_as_0_buf<=id_cp2_as_0;
 				end
 			end
 		end
     end
     
-    always @(posedge clk or `RESET_EDGE reset)begin
+    always @(negedge clk or `RESET_EDGE reset)begin
     	if (reset == `RESET_ENABLE) begin 
             ex_cp2_fs_0 <= `DISABLE;
             ex_cp2_ts_0 <= `DISABLE;
@@ -154,9 +174,9 @@ module ex_reg (
                     ex_cp2_ts_0 <= `DISABLE;
                     ex_cp2_as_0 <= `DISABLE;
 				end else begin			
-                    ex_cp2_fs_0 <= id_cp2_fs_0;
-                    ex_cp2_ts_0 <= id_cp2_ts_0;
-                    ex_cp2_as_0 <= id_cp2_as_0;
+                    ex_cp2_fs_0 <= id_cp2_fs_0_buf;
+                    ex_cp2_ts_0 <= id_cp2_ts_0_buf;
+                    ex_cp2_as_0 <= id_cp2_as_0_buf;
 				end
 			end
 		end

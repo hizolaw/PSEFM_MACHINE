@@ -46,6 +46,7 @@
 	`define     CTRLOPNOP	    2'h0 // No Operation
 	`define     CTRLOPWRCR      2'h1 // ctrl op write ctrl register
 	`define     CTRLOPEXRT	    2'h2 // return from exception
+	`define     CTRLOPRCR      2'h1 // ctrl op read ctrl register
 
    	// exception bus define
 	`define     ISA_EXP_W	    3	 // exception index width
@@ -67,14 +68,14 @@
     `define     IRQ_BUS        5:0
 
     `define     MEMOPBUS       3:0
-    `define     MEMOPLW        4'h1
-    `define     MEMOPLH        4'h2
-    `define     MEMOPLHU       4'h7
-    `define     MEMOPLB        4'h3
+    `define     MEMOPLW        4'h4
+    `define     MEMOPLH        4'h5
+    `define     MEMOPLHU       4'h6
+    `define     MEMOPLB        4'h7
     `define     MEMOPLBU       4'h8
-    `define     MEMOPSW        4'h4
-    `define     MEMOPSH        4'h5
-    `define     MEMOPSB        4'h6
+    `define     MEMOPSW        4'h3
+    `define     MEMOPSH        4'h2
+    `define     MEMOPSB        4'h1
     `define     MEMOPNOP       4'h0
     
 

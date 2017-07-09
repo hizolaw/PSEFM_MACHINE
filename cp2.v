@@ -206,7 +206,8 @@ module cp2(
         .rst                (rst),
         .decode_en          (decode_en),
         .fetch_instruction  (fetch_instruction),
-        
+ 
+        .write_back_fwd     (cp2_tdata_0),
         .time_info_sel		(time_info_sel	),
         .time_dout          (time_dout      ),
         

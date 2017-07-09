@@ -69,18 +69,18 @@ module time_trigger_tasks(
     assign task_exist_list_output=task_exist_list;  
      
     //数据读
-    always @(posedge clk or `RESET_EDGE rst)begin
+    always @(*)begin
         if(rst==`RESET_ENABLE)begin
-            task_info<=0;
+            task_info=0;
         end else begin
             case (info_sel)
-            `PH_INFO:task_info<=task_tg_ph[task_sel_r];
-            `DEADLINE_INFO:task_info<=task_tg_deadline[task_sel_r];
-            `STATUS_INFO:task_info<=(task_status_list&task_sel_mask)>>task_sel_r;
-            `TRIGGER_INFO:task_info<=(task_tg_en&task_sel_mask)>>task_sel_r;
-            `IS_CY_INFO:task_info<=(task_cyen_list&task_sel_mask)>>task_sel_r;
-            `CY_INFO:task_info<=task_tg_cymask[task_sel_r];
-            default:task_info<=0;
+            `PH_INFO:task_info=task_tg_ph[task_sel_r];
+            `DEADLINE_INFO:task_info=task_tg_deadline[task_sel_r];
+            `STATUS_INFO:task_info=(task_status_list&task_sel_mask)>>task_sel_r;
+            `TRIGGER_INFO:task_info=(task_tg_en&task_sel_mask)>>task_sel_r;
+            `IS_CY_INFO:task_info=(task_cyen_list&task_sel_mask)>>task_sel_r;
+            `CY_INFO:task_info=task_tg_cymask[task_sel_r];
+            default:task_info=0;
             endcase
         end
     end

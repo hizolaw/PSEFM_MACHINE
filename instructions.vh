@@ -33,7 +33,8 @@
     `define     INS_FUNC_SLTIU   6'b001011
     `define     INS_FUNC_J       6'b000010
     `define     INS_FUNC_JAL     6'b000011
-
+    
+    `define     INS_ERET         {6'b010000,1'b1,19'b0,6'b011000}
     
     `define     CP2_FMT_MTC2     5'd00100
     `define     CP2_FMT_MFC2     5'd00000
