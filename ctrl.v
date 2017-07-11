@@ -34,6 +34,7 @@ module ctrl (
     input  wire [`IRQ_BUS]         irq,			
 	output reg					  int_detect,	
 	output reg  [`ISAEXPBUS]      int_type,
+    input  wire                   ex_syscall_detect,
 
     input  wire [`WORDADDRBUS]	  id_pc,		
 	
@@ -146,6 +147,9 @@ module ctrl (
                 end else begin
                     int_type=`ISAEXP_EXTINT;
                 end
+            end else if(ex_syscall_detect) begin
+                int_detect=`ENABLE;
+                int_type=`ISAEXP_TRAP;
             end else begin
 		    	int_detect = `DISABLE;
             end
@@ -242,7 +246,11 @@ module ctrl (
                     gpr_wea      <=  `DISABLE_;
     	            cp0[`CTRL_STATUS ][0:0]	 <=  `DISABLE;
                     cp0[`CTRL_COUSE  ]       <=  mem_exp_code;
-                    cp0[`CTRL_EPC    ]  <=  pre_pc;
+                    if(mem_exp_code==`ISAEXP_TRAP)begin
+                        cp0[`CTRL_EPC    ]  <=  mem_pc+4;
+                    end else begin
+                        cp0[`CTRL_EPC    ]  <=  pre_pc;
+                    end
             
 				end else if (mem_ctrl_op == `CTRLOPEXRT) begin //  异常返回
 					exe_mode	 <=  pre_exe_mode;

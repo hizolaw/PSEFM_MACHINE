@@ -23,5 +23,7 @@
     `define ALU_OP_SLLV     6'b000100 //shift left logic
     `define ALU_OP_SRLV     6'b000110 //shift right logic
     `define ALU_OP_SRAV     6'b000111 //shift right arithmetic
-
+    
+    `define ALU_OP_JALR     6'b001001
+    `define ALU_OP_JR     6'b001000
 `endif

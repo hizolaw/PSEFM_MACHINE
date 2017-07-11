@@ -288,16 +288,16 @@ module cp2_decode_stage(
                 end
                 `CHTS           :begin
                     type_as=`ENABLE;
-                    if(task_exist_list&(1<<fetch_instruction[5:0]))begin
-                        task_sel_buf=fetch_instruction[5:0];
+                    if(task_exist_list&(1<<fetch_instruction[6:1]))begin
+                        task_sel_buf=fetch_instruction[6:1];
                         chs_ena_buf=`ENABLE;
                         new_status_buf=fetch_instruction[0:0];
                     end
                 end
                 `CYTASK         :begin
                     type_as=`ENABLE;
-                    if(task_exist_list&(1<<fetch_instruction[5:0]))begin
-                        task_sel_buf=fetch_instruction[5:0];
+                    if(task_exist_list&(1<<fetch_instruction[6:1]))begin
+                        task_sel_buf=fetch_instruction[6:1];
                         chcyen_ena_buf=`ENABLE;
                         chcy_op_buf=fetch_instruction[0:0];
                     end

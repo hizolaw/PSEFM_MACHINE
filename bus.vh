@@ -46,7 +46,7 @@
 	`define     CTRLOPNOP	    2'h0 // No Operation
 	`define     CTRLOPWRCR      2'h1 // ctrl op write ctrl register
 	`define     CTRLOPEXRT	    2'h2 // return from exception
-	`define     CTRLOPRCR      2'h1 // ctrl op read ctrl register
+	`define     CTRLOPRCR      2'h3 // ctrl op read ctrl register
 
    	// exception bus define
 	`define     ISA_EXP_W	    3	 // exception index width

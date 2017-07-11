@@ -91,7 +91,7 @@ module decoder(
 	wire [`REGADDRBUS]  fmt   =  rs_addr;
     wire [`WORDDATABUS] imm_u = {{`ISAEXTW{1'b0}}, imm};
 	
-    wire [`WORDDATABUS] shamt_u = {`WORDDATAW{shamt}};
+    wire [`WORDDATABUS] shamt_u = {27'b0,shamt};
     
     assign gpr_rd_addr_0 = rs_addr; 
 	assign gpr_rd_addr_1 = rt_addr; 
@@ -104,8 +104,8 @@ module decoder(
 	assign mem_wr_data = rt_data; 
 	
 
-    wire [`WORDDATABUS] ret_addr  = if_pc + 3'd4;					
-	wire [`WORDDATABUS] br_target = if_pc + imm_s;
+    wire [`WORDDATABUS] ret_addr  = if_pc + 8;					
+	wire [`WORDDATABUS] br_target = if_pc + (imm_s<<2);
 	wire [`WORDDATABUS] jr_target = {4'b0,if_insn[25:0],2'b0};	
     //creg forwarding
     always@(*)begin
@@ -155,8 +155,8 @@ module decoder(
 
     //load harzard
 	always @(*) begin
-		if ((id_en == `ENABLE) && (|id_mem_op[4:3] ) &&((id_dst_addr == rs_addr) 
-            || (id_dst_addr == rt_addr)) ||(ex_en ==`ENABLE &&(|ex_mem_op[4:3] )&&((ex_dst_addr == rs_addr) || (ex_dst_addr == rt_addr)))
+		if ((id_en == `ENABLE) && (|id_mem_op[3:2] ) &&((id_dst_addr == rs_addr)||(id_dst_addr == rt_addr)) 
+            ||(ex_en ==`ENABLE &&(|ex_mem_op[3:2] )&&((ex_dst_addr == rs_addr) || (ex_dst_addr == rt_addr)))
             ||(id_en==`ENABLE&&id_gpr_we_==`ENABLE_&&(id_dst_addr==rs_addr||id_dst_addr==rt_addr)&&(id_cp2_fs_0|id_cp2_as_0))
             ||(ex_en==`ENABLE&&ex_gpr_we_==`ENABLE_&&(ex_dst_addr==rs_addr||ex_dst_addr==rt_addr)&&(ex_cp2_fs_0|ex_cp2_as_0))) begin
 			ld_hazard = `ENABLE; 
@@ -205,10 +205,11 @@ module decoder(
                         `ALU_OP_SLL,
                         `ALU_OP_SRL,
                         `ALU_OP_SRA     :begin
-                            alu_op   = func;
+                            alu_op   = func|6'b000100;
                             dst_addr = rd_addr;
                             alu_in_0 = rt_data;
                             alu_in_1 = shamt_u;
+                            gpr_we_ = `ENABLE_;
                         end
                         `ALU_OP_SLLV,
                         `ALU_OP_SRLV,
@@ -218,6 +219,22 @@ module decoder(
                             alu_in_0 = rt_data;
                             alu_in_1 = rs_data;
                             gpr_we_ = `ENABLE_;
+                        end
+                        `ALU_OP_JR:   begin
+                            br_addr = rs_data;
+                            br_taken = `ENABLE;
+                            br_flag = `ENABLE;
+                        end
+                        `ALU_OP_JALR:   begin
+                            alu_in_0 = ret_addr;
+                            br_addr = rs_data;
+                            br_taken = `ENABLE;
+                            br_flag = `ENABLE;
+                            dst_addr = rd_addr;//`REGADDRW'd31;
+                            gpr_we_ = `ENABLE_;
+                        end
+                        6'b001100: begin  //syscall
+                            exp_code=`ISAEXP_TRAP;
                         end
                         default         :begin
                             exp_code=`ISAEXP_UNDEFINSN;
@@ -242,8 +259,11 @@ module decoder(
                             dst_addr = creg_rd_addr;
                         end
                         5'b10000:begin
-                            if(if_insn[5:0]==6'b011000&&exe_mode == `CPUKERNELMODE)begin
+                            if(if_insn[5:0]==6'b011000&&exe_mode == `CPUINTERRUPTMODE)begin
                                 ctrl_op = `CTRLOPEXRT;
+                                br_addr = creg_data;
+                                br_taken = `ENABLE;
+                                br_flag = `ENABLE;
                             end else begin
                                 exp_code = `ISAEXP_PRVVIO;
                             end
@@ -295,24 +315,23 @@ module decoder(
                             gpr_we_  = `ENABLE_;
                             cp2_as_s = `ENABLE;
                         end
-                        `SCHSTART       :begin//只需要传送指令
-                            //cp2_as_s = `ENABLE;
-                        end
+                        //`SCHSTART       :begin//只需要传送指令
+                        //    //cp2_as_s = `ENABLE;
+                        //end
                         default         :begin
                         end
                     endcase
-
                 end
-                `INS_FUNC_ERET  :begin  
-                    if(exe_mode == `CPUKERNELMODE)begin
-                        ctrl_op = `CTRLOPEXRT;
-                        br_addr = creg_data;
-                        br_taken = `ENABLE;
-                        br_flag = `ENABLE;
-                    end else begin
-                        exp_code = `ISAEXP_PRVVIO;
-                    end
-                end
+                //`INS_FUNC_ERET  :begin  
+                //    if(exe_mode == `CPUINTERRUPTMODE)begin
+                //        ctrl_op = `CTRLOPEXRT;
+                //        br_addr = creg_data;
+                //        br_taken = `ENABLE;
+                //        br_flag = `ENABLE;
+                //    end else begin
+                //        exp_code = `ISAEXP_PRVVIO;
+                //    end
+                //end
                 `INS_FUNC_ADDI  :begin  
                     alu_op = `ALU_OP_ADD;
                     dst_addr = rt_addr;
@@ -451,6 +470,14 @@ module decoder(
                     dst_addr = `REGADDRW'd31;
                     gpr_we_ = `ENABLE_;
                 end
+//                `INS_FUNC_JALR   :begin
+//                    alu_in_0 = ret_addr;
+//                    br_addr = imm_u<<2;
+//                    br_taken = `ENABLE;
+//                    br_flag = `ENABLE;
+//                    dst_addr = `REGADDRW'd31;
+//                    gpr_we_ = `ENABLE_;
+//                end
                 default:begin
                     exp_code=`ISAEXP_UNDEFINSN;
                 end

@@ -133,7 +133,7 @@ module cpu(
     wire                     ex_cp2_ts_0;
     wire                     ex_cp2_as_0;
     wire [`WORDDATABUS]      ex_cp2_wr_data;
-
+    wire                     ex_syscall_detect;
     assign  cp2_fs_0=   ex_cp2_fs_0;
     assign  cp2_ts_0=   ex_cp2_ts_0;
     assign  cp2_as_0=   ex_cp2_as_0;
@@ -274,7 +274,8 @@ module cpu(
         .ex_cp2_fs_0(ex_cp2_fs_0),
         .ex_cp2_ts_0(ex_cp2_ts_0),
         .ex_cp2_as_0(ex_cp2_as_0),
-        .ex_cp2_wr_data(ex_cp2_wr_data)
+        .ex_cp2_wr_data(ex_cp2_wr_data),
+        .ex_syscall_detect(ex_syscall_detect)
     );
 
     mem_stage mem_stage(
@@ -335,6 +336,7 @@ module cpu(
         .irq			    (irq		 ),			
         .int_detect			(int_detect	 ),	
         .int_type(int_type)    ,
+        .ex_syscall_detect(ex_syscall_detect),
                                          
         .id_pc			    (id_pc		 ),		
                                          

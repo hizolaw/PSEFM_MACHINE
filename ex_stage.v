@@ -63,13 +63,16 @@ module ex_stage (
 	output wire                ex_cp2_fs_0,
     output wire                ex_cp2_ts_0,
     output wire                ex_cp2_as_0,
-    output wire [`WORDDATABUS] ex_cp2_wr_data
+    output wire [`WORDDATABUS] ex_cp2_wr_data,
+    output wire                 ex_syscall_detect
 );
 
 	wire [`WORDDATABUS]		   alu_out;		   
 	wire					   alu_of;		   
 
 	assign fwd_data = alu_out;
+    
+    assign ex_syscall_detect=(id_exp_code==`ISAEXP_TRAP)?`ENABLE:`DISABLE;
 
 	alu alu (
         .rst            (reset),
